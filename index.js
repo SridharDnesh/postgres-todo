@@ -1,7 +1,7 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
-const pool = require("./db");
+const knex = require("./db");
 
 // Middlewares
 app.use(cors());
@@ -13,13 +13,10 @@ app.use(express.json());
 app.post("/addTodo", async (req, res) => {
   try {
     const { description = {} } = req.body;
+    
+    const queryRes = await knex("todo").insert({ description }).returning("*");
 
-    let queryRes = await pool.query(
-      "INSERT INTO todo (description) VALUES ($1) RETURNING *",
-      [description]
-    );
-
-    res.send(queryRes.rows[0]);
+    res.send(queryRes);
   } catch (error) {
     console.error(error.message);
   }
@@ -28,8 +25,9 @@ app.post("/addTodo", async (req, res) => {
 // Get all todos
 app.get("/getAllTodos", async (req, res) => {
   try {
-    const queryRes = await pool.query("SELECT * FROM todo");
-    res.send(queryRes?.rows);
+    const queryRes = await knex("todo").select();
+
+    res.send(queryRes);
   } catch (error) {
     res.status(500);
     res.send(error);
@@ -40,8 +38,10 @@ app.get("/getAllTodos", async (req, res) => {
 app.get("/getTodoById", async (req, res) => {
   try {
     const { todo_id } = req.body;
-    const queryRes = await pool.query("SELECT * FROM todo WHERE todo_id = $1", [todo_id]);
-    res.send(queryRes?.rows);
+
+    const queryRes = await knex("todo").where("todo_id", todo_id).select();
+
+    res.send(queryRes);
   } catch (error) {
     res.status(500);
     res.send(error);
@@ -53,12 +53,11 @@ app.post("/updateTodo", async (req, res) => {
   try {
     const { todo_id, description } = req.body;
 
-    debugger;
-    const queryRes = await pool.query(
-      "UPDATE todo SET description = $1 WHERE todo_id = $2 RETURNING *",
-      [description, todo_id]
-    );
-    res.send(queryRes?.rows);
+    const queryRes = await knex("todo")
+      .where({ todo_id })
+      .update({ description }, "*");
+
+    res.send(queryRes);
   } catch (error) {
     res.status(500);
     res.send(error);
@@ -69,11 +68,10 @@ app.post("/updateTodo", async (req, res) => {
 app.delete("/deleteTodo", async (req, res) => {
   try {
     const { todo_id } = req.body;
-    const queryRes = await pool.query(
-      "DELETE FROM todo WHERE todo_id = $1 RETURNING *",
-      [todo_id]
-    );
-    res.send(queryRes?.rows);
+
+    const queryRes = await knex("todo").where({ todo_id }).delete(["todo_id"]);
+
+    res.send(queryRes);
   } catch (error) {
     res.status(500);
     res.send(error);
